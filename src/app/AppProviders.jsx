@@ -15,7 +15,7 @@ const queryClient = new QueryClient({
         },
     },
 });
-
+// changes done
 export function AppProviders({ children }) {
     const isOnline = useOnlineStatus();
 
