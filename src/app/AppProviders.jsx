@@ -7,15 +7,23 @@ import { useOnlineStatus } from "../hooks/useNetworkStatus";
 import { InternetStatus } from "../components/InternetStatus";
 import { useEffect } from "react";
 
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: true,
+            staleTime: 0,
+        },
+    },
+});
+
 export function AppProviders({ children }) {
-    const queryClient = new QueryClient();
     const isOnline = useOnlineStatus();
 
     useEffect(() => {
         if (isOnline) {
             queryClient.refetchQueries();
         }
-    }, [isOnline, queryClient]);
+    }, [isOnline]);
 
     return (
         <Provider store={store}>

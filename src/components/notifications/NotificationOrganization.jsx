@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { FaSpinner, FaTimes } from "react-icons/fa";
 import { useNotifications } from "../../api/notification";
+import useUserProfile from "../../hooks/useUserProfile";
 import {
   useAcceptMissionRequest,
   useRejectMissionRequest,
@@ -12,12 +15,15 @@ import { MISSION_STATUS, MISSION_TYPE } from "../../constant/MISSION_STATUS";
 
 export default function NotificationOrganization({ onClose }) {
   const ref = useRef(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useUserProfile();
   const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState({ id: null, action: null });
   const [handled, setHandled] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
 
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { data: notifications = [], isLoading, refetch } = useNotifications();
 
   const accept = useAcceptMissionRequest({
     onSettled: () => setLoading({ id: null, action: null }),
@@ -55,12 +61,38 @@ export default function NotificationOrganization({ onClose }) {
 
     setLoading({ id: n.id, action });
 
-    if (action === "accept") await accept.mutateAsync({ missionId, volunteerId });
-    if (action === "reject") await reject.mutateAsync({ missionId, volunteerId });
-    if (action === "complete") await complete.mutateAsync({ missionId, volunteerId });
-    if (action === "reject-completion") await rejectCompletion.mutateAsync({ missionId, volunteerId });
+    try {
+      if (action === "accept") await accept.mutateAsync({ missionId, volunteerId });
+      if (action === "reject") await reject.mutateAsync({ missionId, volunteerId });
+      if (action === "complete") await complete.mutateAsync({ missionId, volunteerId });
+      if (action === "reject-completion") await rejectCompletion.mutateAsync({ missionId, volunteerId });
 
-    setHandled((prev) => [...prev, n.id]);
+      setHandled((prev) => [...prev, n.id]);
+
+      // Immediately invalidate and refetch all related queries so UI updates in current tab
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["mission"] });
+      queryClient.invalidateQueries({ queryKey: ["missions"] });
+      queryClient.invalidateQueries({ queryKey: ["orgMissions"] });
+      refetch?.();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading({ id: null, action: null });
+    }
+  };
+
+  const handleNotificationClick = (n) => {
+    try {
+      const meta = JSON.parse(n.meta || "{}");
+      const missionId = meta?.mission_id || meta?.missionId;
+      if (missionId) {
+        onClose?.();
+        navigate(`/organization/mission/${missionId}`);
+        return;
+      }
+    } catch (e) { }
+    setExpandedId(expandedId === n.id ? null : n.id);
   };
 
   return (
@@ -112,10 +144,10 @@ export default function NotificationOrganization({ onClose }) {
               >
                 <div
                   className="peer flex-1 min-w-0 pr-2 cursor-pointer"
-                  onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
+                  onClick={() => handleNotificationClick(n)}
                 >
                   {/* Default truncated text */}
-                  <p className={`text-sm font-semibold text-gray-800 cursor-help ${expandedId === n.id ? "whitespace-normal" : "truncate"}`}>
+                  <p className={`text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors ${expandedId === n.id ? "whitespace-normal" : "truncate"}`}>
                     {n.message}
                   </p>
                   <p className="text-[11px] text-gray-400 mt-1 font-medium flex items-center gap-1.5">

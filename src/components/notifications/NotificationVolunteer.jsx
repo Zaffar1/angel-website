@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { FaSpinner, FaTimes } from "react-icons/fa";
 import { useNotifications } from "../../api/notification";
 import {
@@ -14,6 +16,8 @@ import useUserProfile from "../../hooks/useUserProfile";
 
 export default function NotificationVolunteer({ onClose }) {
   const ref = useRef(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -132,7 +136,26 @@ export default function NotificationVolunteer({ onClose }) {
       await action.run(missionId, n.sender_id);
     } finally {
       setLoading(null);
+      // Immediately invalidate and refetch all related queries so UI updates in current tab
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["mission"] });
+      queryClient.invalidateQueries({ queryKey: ["missions"] });
+      queryClient.invalidateQueries({ queryKey: ["orgMissions"] });
+      refetch?.();
     }
+  };
+
+  const handleNotificationClick = (n) => {
+    try {
+      const meta = JSON.parse(n.meta || "{}");
+      const missionId = meta?.missionId || meta?.mission_id;
+      if (missionId) {
+        onClose?.();
+        navigate(`/${user?.type || "volunteer"}/mission/${missionId}`);
+        return;
+      }
+    } catch (e) { }
+    setExpandedId(expandedId === n.id ? null : n.id);
   };
 
   return (
@@ -241,10 +264,10 @@ export default function NotificationVolunteer({ onClose }) {
                 >
                   <div
                     className="peer flex-1 min-w-0 pr-2 cursor-pointer"
-                    onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
+                    onClick={() => handleNotificationClick(n)}
                   >
                     {/* Default truncated text */}
-                    <p className={`text-sm font-semibold text-gray-800 cursor-help ${expandedId === n.id ? "whitespace-normal" : "truncate"}`}>
+                    <p className={`text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors ${expandedId === n.id ? "whitespace-normal" : "truncate"}`}>
                       {n.message}
                     </p>
                     <p className="text-[11px] text-gray-400 mt-1 font-medium flex items-center gap-1.5">
@@ -259,7 +282,10 @@ export default function NotificationVolunteer({ onClose }) {
                     {n.type === MISSION_TYPE.ORGANIZATION_INVITATION && (
                       <div className="flex gap-2 shrink-0">
                         <button
-                          onClick={() => handleAction(n, "join")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(n, "join");
+                          }}
                           disabled={loading === n.id}
                           className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-green-600 text-white hover:bg-green-700 shadow-sm transition-colors cursor-pointer disabled:opacity-60"
                         >
@@ -271,7 +297,10 @@ export default function NotificationVolunteer({ onClose }) {
                         </button>
 
                         <button
-                          onClick={() => handleAction(n, "reject")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(n, "reject");
+                          }}
                           disabled={loading === n.id}
                           className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-60"
                         >
@@ -283,7 +312,10 @@ export default function NotificationVolunteer({ onClose }) {
                     {/* MISSION ACTION */}
                     {shouldShowAction && (
                       <button
-                        onClick={() => handleAction(n)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAction(n);
+                        }}
                         disabled={loading === n.id}
                         className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors cursor-pointer disabled:opacity-60 shrink-0"
                       >

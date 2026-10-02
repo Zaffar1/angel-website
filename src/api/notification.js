@@ -16,15 +16,25 @@ export function useNotifications() {
       return data?.data || [];
     },
     refetchOnWindowFocus: true,
+    refetchInterval: 4000, // Real-time polling so user doesn't need to switch tabs
+    staleTime: 0,
   });
 
   useSocket((data) => {
-    if (!user?.id || !data?.id) return;
+    if (!user?.id) return;
 
-    queryClient.setQueryData(["notifications", user?.id], (prev = []) => {
-      const exists = prev.some((n) => n.id === data.id);
-      return exists ? prev : [data, ...prev];
-    });
+    if (data?.id) {
+      queryClient.setQueryData(["notifications", user?.id], (prev = []) => {
+        const exists = prev.some((n) => n.id === data.id);
+        return exists ? prev : [data, ...prev];
+      });
+    }
+
+    // Invalidate notifications and mission queries so current page updates immediately
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["mission"] });
+    queryClient.invalidateQueries({ queryKey: ["missions"] });
+    queryClient.invalidateQueries({ queryKey: ["orgMissions"] });
   });
 
   const markAllAsRead = async () => {
@@ -34,7 +44,7 @@ export function useNotifications() {
 
     try {
       await api.put("/notifications/read");
-      queryClient.invalidateQueries(["notifications", user?.id]);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     } catch (err) {
       console.log("Mark all read failed silently", err);
     }

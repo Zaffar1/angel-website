@@ -5,23 +5,43 @@ import { SERVER_URL } from "../utils/envConfig";
 
 export function useSocket(onNotification) {
   const socketRef = useRef(null);
+  const onNotificationRef = useRef(onNotification);
   const { token } = useUserProfile();
 
   useEffect(() => {
-    if (!token || socketRef.current) return;
+    onNotificationRef.current = onNotification;
+  }, [onNotification]);
 
-    const socket = io(SERVER_URL, {
-      auth: { token },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+  useEffect(() => {
+    if (!token) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      return;
+    }
 
-    socketRef.current = socket;
+    if (!socketRef.current) {
+      const socket = io(SERVER_URL, {
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-    socket.on("notification", (data) => onNotification?.(data));
+      socketRef.current = socket;
 
-    return () => socket.disconnect();
+      socket.on("notification", (data) => {
+        onNotificationRef.current?.(data);
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
   }, [token]);
 
   return socketRef.current;
