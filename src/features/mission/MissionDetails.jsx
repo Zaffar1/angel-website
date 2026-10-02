@@ -124,7 +124,7 @@ export default function MissionDetails() {
 
     const handleGroupCompletionClick = () => {
         if (!mission?.id) return showError("Mission ID missing!");
-        
+
         const completedVol = completedVolunteerInGroup || assignedCompletedVolunteer;
         updateVolunteerStatus({
             mission_id: Number(mission.id),
@@ -160,17 +160,17 @@ export default function MissionDetails() {
 
     const renderAssignStatusBadge = (status) => {
         const displayVal = formatStatus(
-            status === "process" 
-                ? "pending" 
-                : (status === "in_progress" || status === "inprogress") 
-                    ? "started" 
+            status === "process"
+                ? "pending"
+                : (status === "in_progress" || status === "inprogress")
+                    ? "started"
                     : status
         );
-        
+
         // Determine colors/classes based on status
         let colorClass = "bg-gray-100 text-gray-700 border-gray-200";
         let dotClass = "bg-gray-400";
-        
+
         const s = status?.toLowerCase();
         if (s === 'completed') {
             colorClass = "bg-green-50 text-green-700 border border-green-200";
@@ -188,7 +188,7 @@ export default function MissionDetails() {
             colorClass = "bg-red-50 text-red-700 border border-red-200";
             dotClass = "bg-red-500";
         }
-        
+
         return (
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${colorClass}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></span> {displayVal}
@@ -411,15 +411,15 @@ export default function MissionDetails() {
                             </ThemeButton>
                         )}
                         {hasCompletedVolunteerInGroup &&
-                         mission.status !== "completion_requested" &&
-                         mission.status !== "completed" && (
-                            <ThemeButton
-                                onClick={handleGroupCompletionClick}
-                                isLoading={isUpdatingVolunteerStatus}
-                            >
-                                Request Completion
-                            </ThemeButton>
-                        )}
+                            mission.status !== "completion_requested" &&
+                            mission.status !== "completed" && mission.status !== "rejected" && (
+                                <ThemeButton
+                                    onClick={handleGroupCompletionClick}
+                                    isLoading={isUpdatingVolunteerStatus}
+                                >
+                                    Request Completion
+                                </ThemeButton>
+                            )}
                     </div>
                 )}
             </div>
